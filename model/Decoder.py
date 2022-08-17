@@ -9,26 +9,37 @@ from model.PositionalEncoding import PositionalEncoding
 
 ## embedding + encoder layer + linear transformation
 class Decoder(nn.Module):
-    def __init__(self, OUTPUT_DIM, TRG_PAD_IDX, HIDDEN_DIM, DEC_LAYERS, DEC_HEADS, DEC_PF_DIM, DEC_DROUPOUT, device):
+    def __init__(self, dec_voc_size, TRG_PAD_IDX, d_model, n_layers, n_head, ffn_hidden, drop_prob, device, attn_option, n_position=512):
         super().__init__()
-        self.tok_embedding = nn.Embedding(OUTPUT_DIM, HIDDEN_DIM, padding_idx=TRG_PAD_IDX)
-        self.pos_encoding = PositionalEncoding(HIDDEN_DIM, n_position=512)
-        
-        decoder_layer = DecoderLayer(HIDDEN_DIM, DEC_HEADS, DEC_PF_DIM, DEC_DROUPOUT, device)
-        self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for _ in range(DEC_LAYERS)])
-        
-        self.dropout = nn.Dropout(DEC_DROUPOUT)
-        self.HIDDEN_DIM = HIDDEN_DIM # (=d_model)
-        self.layer_norm = nn.LayerNorm(HIDDEN_DIM)
-        #self.scale = torch.sqrt(torch.FloatTensor([HIDDEN_DIM])).to(device)
+
+        self.device = device
+
+        # input dimension → embedding dimension
+        self.tok_embedding = nn.Embedding(dec_voc_size, d_model, padding_idx=TRG_PAD_IDX)
+        # positional embedding 학습 (sinusoidal x) =>>  self.pos_embedding = nn.Embedding(max_len, d_model)
+        self.pos_encoding = PositionalEncoding(d_model, n_position=n_position)
+        decoder_layer = DecoderLayer(d_model, n_head, ffn_hidden, drop_prob, device, attn_option, n_position)
+        self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for _ in range(n_layers)])
+        #self.layers = nn.ModuleList([DecoderLayer(d_model, n_head, ffn_hidden, drop_prob, device) for _ in range(n_layers)])
+        self.dropout = nn.Dropout(drop_prob)
+        #self.d_model = d_model
+        ### self.linear = nn.Linear(d_model, dec_voc_size)
+        self.scale = torch.sqrt(torch.FloatTensor([d_model])).to(device)
 
     def forward(self, trg, enc_src, trg_mask, src_mask):
-        tok_emb = self.tok_embedding(trg)
-        tok_emb *= self.HIDDEN_DIM ** 0.5  ## normalization (root(d_model)을 곱함)
-        pos_emb = self.dropout(self.pos_encoding(tok_emb))
-        output = self.layer_norm(pos_emb)
 
+        x = trg
+        x = self.tok_embedding(x)
+        x = x * self.scale
+        #trg *= self.d_model ** 0.5
+        x = self.dropout(self.pos_encoding(x))
+        
         for layer in self.layers:
-            output, dec_slf_attn, dec_enc_attn = layer(output, enc_src, trg_mask, src_mask)
+            x, attention = layer(x, enc_src, trg_mask, src_mask)
+        
+        #return trg, attention
+        return x
+        # linear transformation
+        #output = self.linear(trg)
+        # return output, attention
 
-        return output

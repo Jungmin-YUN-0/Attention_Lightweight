@@ -12,16 +12,9 @@ class FeedForward(nn.Module):
         # 2# RELU_f2 = max(0, f1)
         # 3# linear transformation2_f3 = f2W2+b2
         self.linear2 = nn.Linear(hidden, d_model)
-
-        self.layer_norm = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(drop_prob)
 
     def forward(self, x):
-        residual = x
-
-        x = self.linear2(torch.relu(self.linear1(x)))
-        x = self.dropout(x)
-        x += residual
-
-        x = self.layer_norm(x)
+        x = self.linear2(self.dropout(torch.relu(self.linear1(x))))
+        #x = self.dropout(x)
         return x

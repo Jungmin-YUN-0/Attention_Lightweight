@@ -4,7 +4,7 @@ import numpy as np
 
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_hid, n_position=512):
+    def __init__(self, d_hid, n_position):
         super(PositionalEncoding, self).__init__()
 
         # Not a parameter

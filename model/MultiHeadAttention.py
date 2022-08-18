@@ -438,7 +438,7 @@ class LinformerSelfAttention_CF_test(nn.Module):
             out_p = out_p.view(batch_size, -1, self.d_model)
             out_p = self.fc_concat(out_p)
             
-            print(topk_indices)
+            #print(topk_indices)
 
             #out = out_l+out_p
         return out_p, topk_indices

@@ -1,346 +1,196 @@
-from dataclasses import fields
-from email.policy import default
-from tqdm import tqdm, tqdm_notebook
-import dill
-import time
-from transformers import get_scheduler
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+import dill
+from tqdm import tqdm
 from torchtext.data import Dataset, BucketIterator
+from torchtext.data.metrics import bleu_score  # BLEU
 from model.Transformer import Transformer
 from model.Classification import CF_Transformer
+from model.translator import Translator
 import argparse
 import wandb
-import numpy as np
+import torch.nn.functional as F
+#from sklearn.metrics import classification_report
+from sklearn.metrics import f1_score
+#from sklearn.metrics import precision_score
+#from sklearn.metrics import recall_score
+from sklearn import metrics
 
+class Test():
+    def __init__(self, gpu, opt, batch_size, data_pkl, model_save, pred_save, hidden_dim, n_layer, n_head, ff_dim, dropout, data_task):
 
-
-class Train():
-    def __init__(self, gpu, opt, batch_size, n_epoch, data_pkl, model_save, learning_rate, num_warmup, hidden_dim, n_layer, n_head, ff_dim, dropout, data_task):
+        self.data_pkl = data_pkl
+        self.saved_model = model_save
+        self.saved_result = pred_save
 
         gpu = "cuda:"+gpu
         device = torch.device(gpu if torch.cuda.is_available() else 'cpu')  # cuda(gpu) 사용
 
-        HIDDEN_DIM = hidden_dim
-        ENC_LAYERS = DEC_LAYERS = n_layer
-        ENC_HEADS = DEC_HEADS = n_head
-        ENC_PF_DIM = DEC_PF_DIM = ff_dim
-        ENC_DROPOUT = DEC_DROPOUT = dropout
-        saved_model = model_save
-        N_EPOCHS = n_epoch
-        LEARNING_RATE  = learning_rate
+        self.HIDDEN_DIM = hidden_dim
+        self.ENC_LAYERS = self.DEC_LAYERS = n_layer
+        self.ENC_HEADS = self.DEC_HEADS = n_head
+        self.ENC_PF_DIM = self.DEC_PF_DIM = ff_dim
+        self.ENC_DROPOUT = self.DEC_DROPOUT = dropout
         attn_option = opt
+   
+        ##########################################################################################################
+        data = dill.load(open(self.data_pkl, 'rb'))
 
-        SEED=42
-        torch.manual_seed(SEED) # torch 
-        torch.cuda.manual_seed(SEED)
-        np.random.seed(SEED) # numpy
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(SEED)
-
-
-    ########################################################################################################################################################
+        SRC, TRG = data['vocab']['src'], data['vocab']['trg']
+        SRC_PAD_IDX = SRC.vocab.stoi["<blank>"]
         if data_task == "MT":
-            def patch_trg(trg, pad_idx):
-                trg, gold = trg[:, :-1], trg[:, 1:].contiguous().view(-1)
-                return trg, gold
+            TRG_PAD_IDX = TRG.vocab.stoi["<blank>"]
+            TRG_SOS_IDX = TRG.vocab.stoi["<sos>"]
+            TRG_EOS_IDX = TRG.vocab.stoi["<eos>"]
 
-            def cal_performance(pred, gold, TRG_PAD_IDX, criterion):
-                gold = gold.contiguous().view(-1)
-                loss = criterion(pred, gold)
-                #loss = F.cross_entropy(pred, gold, ignore_index=TRG_PAD_IDX, reduction='sum')
+        INPUT_DIM = len(SRC.vocab)
+        OUTPUT_DIM = len(TRG.vocab)
 
-                pred = pred.max(1)[1]
+        test_data = Dataset(examples=data['test_data'], fields={'src': SRC, 'trg': TRG})
+        test_iterator = BucketIterator(test_data, batch_size=batch_size, device=device)
 
-                non_pad_mask = gold.ne(TRG_PAD_IDX)    # ne is =!, eq is ==
-                n_correct = pred.eq(gold).masked_select(non_pad_mask).sum().item()
-                n_word = non_pad_mask.sum().item()
-                return loss, n_correct, n_word    
-
-            #############################
-            # model training (per epoch)# 
-            #############################
-            def train(model, iterator, optimizer, device, SRC_PAD_IDX, TRG_PAD_IDX, criterion, data):
-                model.train() # 학습 모드
-                total_loss, n_word_total, n_word_correct = 0, 0, 0 
-                
-                ####
-
-                for idx,batch in enumerate(tqdm(iterator)):  ##leave=False
-                    # prepare data
-                    #src_tensor = torch.zeros(512, dtype=torch.long) #src_max_len = 512
-                    #src_tensor[:len(src)] = torch.tensor(src, dtype=torch.long)
-                    #batch.src 
-
-                    src_seq = batch.src.to(device)
-                    trg_seq, gold = map(lambda x: x.to(device), patch_trg(batch.trg, TRG_PAD_IDX))
-                    
-                    # forward
-                    optimizer.zero_grad()
-                    pred = model(src_seq, trg_seq)
-                    
-
-                    # backward & update parameters
-                    loss, n_correct, n_word = cal_performance(pred, gold, TRG_PAD_IDX, criterion)
-                    loss.backward()
-                            
-                    optimizer.step()
-                    lr_scheduler.step()
-
-                    # note keeping
-                    n_word_total += n_word
-                    n_word_correct += n_correct
-                    total_loss += loss.item()
-
-                    #if idx % 50 == 0:
-                    #print(f"{idx} : loss = {total_loss/n_word_total} | acc = {n_word_correct/n_word_total}")
-                    #trg_tokens = [data['vocab']['trg'].vocab.itos[i] for i in [data['vocab']['trg'].vocab.stoi[data['vocab']['trg'].init_token]]]
-                    #print(trg_tokens[1:])
-                loss_per_word = total_loss/n_word_total
-                accuracy = n_word_correct/n_word_total
-                
-                return loss_per_word, accuracy
-
-            ###############################
-            # model evaluation (per epoch)# 
-            ###############################
-            def evaluate(model, iterator, device, SRC_PAD_IDX, TRG_PAD_IDX, criterion):
-                model.eval() # 평가 모드
-                total_loss, n_word_total, n_word_correct = 0, 0, 0
-                
-                with torch.no_grad():
-                    for batch in tqdm(iterator):  #leave=False
-                        # prepare data
-                        src_seq = batch.src.to(device)
-                        trg_seq, gold = map(lambda x: x.to(device), patch_trg(batch.trg, TRG_PAD_IDX))
-                        
-                        # forward
-                        pred = model(src_seq, trg_seq)
-                        loss, n_correct, n_word = cal_performance(pred, gold, TRG_PAD_IDX, criterion)
-
-                        # note keeping
-                        n_word_total += n_word
-                        n_word_correct += n_correct
-                        total_loss += loss.item()
-                loss_per_word = total_loss/n_word_total
-                accuracy = n_word_correct/n_word_total
-                return loss_per_word, accuracy
-
-            ###############
-            # start train #
-            ###############
-            def start_train(model, train_iterator, valid_iterator, optimizer, device, N_EPOCHS, criterion):
-                def print_performances(header, accu, start_time, loss):
-                    print('  - {header:12}  accuracy: {accu:3.3f} %, loss: {loss:3.3f} '\
-                            'elapse: {elapse:3.3f} min'.format(
-                                header=f"({header})",
-                                accu=100*accu, loss=loss, elapse=(time.time()-start_time)/60))
-                
-                best_valid_loss = float('inf')
-                #valid_losses = []
-                time_check = []
-                for epoch in range(N_EPOCHS):
-                    print(f'[ Epoch | {epoch}:{N_EPOCHS}]')
-                    start_time_check = time.time()
-                    start_time = time.time() # 시작 시간
-                    train_loss, train_accu = train(model, train_iterator, optimizer, device, SRC_PAD_IDX, TRG_PAD_IDX, criterion, data)
-                    print_performances('Training', train_accu, start_time, train_loss)
-                    
-                    start_time = time.time()
-                    valid_loss, valid_accu = evaluate(model, valid_iterator, device, SRC_PAD_IDX, TRG_PAD_IDX, criterion)
-                    print_performances('Validation', valid_accu, start_time, valid_loss)
-                    
-                    end_time_check = time.time()
-                    time_check.append(end_time_check - start_time_check)
-                    if valid_loss < best_valid_loss:
-                        best_valid_loss = valid_loss
-                        torch.save(model.state_dict(), saved_model)
-                        print(f'[Info] Model has been updated - epoch: {epoch}')
-                    #valid_losses += [valid_loss]
-                
-                    wandb.log({"train_loss": train_loss})
-                    wandb.log({"valid_loss": valid_loss})
-                    wandb.log({"train_accuracy": train_accu})   
-                    wandb.log({"valid_accuracy": valid_accu})
-                print(time_check/8)
-        ########################################################################################################################
-        ########################################################################################################################
-        
+        if data_task == "MT":
+            model = Transformer(INPUT_DIM, OUTPUT_DIM, SRC_PAD_IDX, TRG_PAD_IDX, self.HIDDEN_DIM,
+                            self.ENC_LAYERS, self.DEC_LAYERS, self.ENC_HEADS, self.DEC_HEADS,
+                            self.ENC_PF_DIM, self.DEC_PF_DIM, self.ENC_DROPOUT, self.DEC_DROPOUT, device, attn_option).to(device)
         elif data_task == "CF":
+            model = CF_Transformer(INPUT_DIM, OUTPUT_DIM, SRC_PAD_IDX, self.HIDDEN_DIM, self.ENC_LAYERS, self.ENC_HEADS, self.ENC_PF_DIM, self.ENC_DROPOUT, device, attn_option).to(device)
 
-            def train(model, train_iterator, optimizer, device, criterion):  #def train_model(self, train_iterator):
-                model.train()
-                epoch_losses = 0
-                epoch_accs = 0
+        model.load_state_dict(torch.load(self.saved_model))
+        print('[Info] Trained model state loaded.')
 
-                for batches in tqdm(train_iterator):
-                    input_seq, _ = batches.src
-                    target = batches.trg
-                    pred = model(input_seq)
-                    loss = criterion(pred, target)  #target.contiguous().view(-1)
-                    
-                    pred_class = pred.argmax(dim=-1)
-                    correct_pred = pred_class.eq(target).sum()
-                    accuracy = correct_pred / pred.shape[0] #pred.shape[0]: batch_size
-                    
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()             
-                    lr_scheduler.step()
+        
 
-                    epoch_losses += loss.item()
-                    epoch_accs += accuracy.item()
+        #wandb.init(project="transformer", entity="jungminy")
 
-                return epoch_losses/len(train_iterator), epoch_accs/len(train_iterator)
+        #import torchvision.models as models
+        #from ptflops import get_model_complexity_info
 
-                
-            def evaluate(model, iterator, device, criterion):
+        #dummy_size = (256, 1)
+
+        #macs, params = get_model_complexity_info(model, dummy_size, as_strings=True, print_per_layer_stat=False, verbose=False)
+                                        
+        #print('computational complexity: ', macs)
+        #print('number of parameters: ', params)
+
+        #===============================================================#
+        if data_task == 'MT':
+            translator = Translator(model=model, beam_size=5, max_seq_len=512, src_pad_idx=SRC_PAD_IDX, trg_pad_idx=TRG_PAD_IDX, trg_bos_idx=TRG_SOS_IDX, trg_eos_idx=TRG_EOS_IDX, device=device).to(device)
+            unk_idx = SRC.vocab.stoi[SRC.unk_token]
+
+            pred_trgs = []
+            trgs= []
+            index=0
+            
+            print('[Info] Inference ...')
+            if attn_option == 'BASE':
+                with open(self.saved_result, 'w') as f:
+                    for example in tqdm(test_data, desc='  - (Test)', leave=False):
+                        #print(' '.join(example.src))
+                        src_seq = [SRC.vocab.stoi.get(word, unk_idx) for word in example.src]
+
+                        src_seq_ext = torch.zeros((1,512), dtype=torch.long) #!#
+                        src_seq_ext[:, :len(src_seq)] = torch.LongTensor([src_seq]) #!#
+                        pred_seq = translator.translate_sentence(src_seq_ext.to(device)) #!#
+
+                        pred_seq = translator.translate_sentence(torch.LongTensor([src_seq]).to(device))
+                        
+                        pred_line = ' '.join(TRG.vocab.itos[idx] for idx in pred_seq)
+                        #pred_line = pred_line.replace("<sos>", '').replace("<eos>", '')
+                        pred_line = pred_line.replace("<sos>", '').replace("<unk>", '').replace("<eos>", '')
+                        #print(pred_line)
+                        f.write(pred_line.strip() + '\n')
+                        #f.write(' '.join(vars(example)['trg']) + '\n')
+
+                        ## for BLEU_score
+                        pred_trgs.append(pred_line.split(" ")) ##예측            
+                        trgs.append([vars(example)['trg']]) ##정답
+                        if (index%100)==0:
+                            print(f"[{index} / {len(test_data)}")
+                            print(f'예측: {pred_line}')
+                            print(f"정답: {' '.join(vars(example)['trg'])}")
+                        index += 1
+                bleu = bleu_score(pred_trgs, trgs, max_n=4, weights=[0.25,0.25,0.25,0.25])
+                print('[Info] Finished.')
+                print(f'BLEU score : {bleu}')
+            
+            elif attn_option == 'LR' or attn_option =='CT':
+                with open(self.saved_result, 'w') as f:
+                    for example in tqdm(test_data, desc='  - (Test)', leave=False):
+                        src_seq = [SRC.vocab.stoi.get(word, unk_idx) for word in example.src]
+                        
+                        src_seq_ext = torch.zeros((1,512), dtype=torch.long) #!#
+                        src_seq_ext[:, :len(src_seq)] = torch.LongTensor([src_seq]) #!#
+                        pred_seq = translator.translate_sentence(src_seq_ext.to(device)) #!#
+
+                        pred_line = ' '.join(TRG.vocab.itos[idx] for idx in pred_seq)
+                        pred_line = pred_line.replace("<sos>", '').replace("<unk>", '').replace("<eos>", '')
+                        #print(pred_line)
+                        f.write(pred_line.strip() + '\n')
+
+                        ## for BLEU_score
+                        pred_trgs.append(pred_line.split(" ")) ##예측            
+                        trgs.append([vars(example)['trg']]) ##정답
+                        if (index%100)==0:
+                            print(f"[{index} / {len(test_data)}")
+                            print(f'예측: {pred_line}')
+                            print(f"정답: {' '.join(vars(example)['trg'])}")
+                        index += 1
+                        
+                bleu = bleu_score(pred_trgs, trgs, max_n=4, weights=[0.25,0.25,0.25,0.25])
+                print('[Info] Finished.')
+                print(f'BLEU score : {bleu}')
+            #wandb.log({"bleu_score": bleu})
+
+            return
+##################################################################################################################
+        if data_task == 'CF':
+            def get_predictions(model, iterator, device):
                 model.eval()
 
-                epoch_losses = 0
-                epoch_accs = 0
+                epoch_accuracy = 0
+                
+                targets = torch.tensor([]).to(device)
+                preds= torch.tensor([]).to(device)
 
                 with torch.no_grad():
                     for batch in tqdm(iterator):
                         input_seq, _ = batch.src
+                        
                         target = batch.trg
                         pred = model(input_seq)
-                        loss = criterion(pred, target)
 
                         pred_class = pred.argmax(dim=-1)
                         correct_pred = pred_class.eq(target).sum()
-                        accuracy = correct_pred / pred.shape[0] #pred.shape[0]: batch_size
+                        accuracy = correct_pred / pred.shape[0]
 
-                        epoch_losses += loss.item()
-                        epoch_accs += accuracy.item()
+                        epoch_accuracy += accuracy.item()         
 
-                return epoch_losses/len(iterator), epoch_accs/len(iterator)
+                        targets = torch.cat([targets,target])
+                        preds = torch.cat([preds, pred_class])
 
+                        #F1_score = f1_score(target.cpu(), pred_class.cpu(), average='binary')
+                        #Recall_score =  recall_score(target.cpu(), pred_class.cpu(), average='binary')
+                        #Precision_score = precision_score(target.cpu(), pred_class.cpu(), average='binary')
+                        #F1_score = f1_score(target.cpu(), pred_class.cpu(), average='weighted')#!!#average=binary
+                        #F1_score_t = tfa.metrics.F1Score(num_classes=2, average="weighted")
+                        
+                        #print(metrics.classification_report(target.cpu(), pred_class.cpu(), digits=4))
+                    #F1_score = f1_score(targets.cpu(), preds.cpu(), average='binary')# number of class = 2
+                    F1_score = f1_score(targets.cpu(), preds.cpu(), average='weighted') # number of class > 2
+                return epoch_accuracy / len(iterator), F1_score
 
-            def start_train(model, train_iterator, valid_iterator, optimizer, device, N_EPOCHS, criterion):
-                best_valid_loss = float('inf')
-                train_losses = []
-                train_accs = []
-                valid_losses = []
-                valid_accs = []
+            acc, F1_score = get_predictions(model, test_iterator, device)
 
-                for epoch in range(n_epoch):
-                    train_loss, train_acc = train(model, train_iterator, optimizer, device, criterion)
-                    valid_loss, valid_acc = evaluate(model, valid_iterator, device, criterion)
-                    
-                    if valid_loss < best_valid_loss:
-                        best_valid_loss = valid_loss
-                        torch.save(model.state_dict(), saved_model)
-                        print(f'[Info] Model has been updated - epoch: {epoch}')
+            print(f"accuracy: {acc}")
+            print(f"f1_score: {F1_score}")
+            #print(f"f1_score(tensorflow): {F1_score_t}")
 
-                    print(f'epoch: {epoch+1}')
-                    print(f'train_loss: {train_loss:.3f}, train_acc: {train_acc:.3f}')
-                    print(f'valid_loss: {valid_loss:.3f}, valid_acc: {valid_acc:.3f}')
-
-                    wandb.log({"train_loss": train_loss})
-                    wandb.log({"valid_loss": valid_loss})
-                    wandb.log({"train_accuracy": train_acc})   
-                    wandb.log({"valid_accuracy": valid_acc})
-                
-            
-    ########################################################################################################################################################
-        
-        #==================== PREPARING ====================#
-        data = dill.load(open(data_pkl, 'rb'))
-
-        SRC_PAD_IDX = data['vocab']['src'].vocab.stoi["<blank>"]
-        if data_task == "MT":
-            TRG_PAD_IDX = data['vocab']['trg'].vocab.stoi["<blank>"]
-            #SRC_PAD_IDX = data['vocab']['src'].vocab.stoi[data['vocab']['src'].pad_token]
-            #TRG_PAD_IDX = data['vocab']['trg'].vocab.stoi[data['vocab']['trg'].pad_token]
-
-        INPUT_DIM = len(data['vocab']['src'].vocab)  # src_vocab_size
-        OUTPUT_DIM = len(data['vocab']['trg'].vocab)  # trg_vocab_size
-
-        fields = {'src': data['vocab']['src'], 'trg' : data['vocab']['trg']}
-
-        train_data = Dataset(examples=data['train_data'], fields=fields)
-        val_data = Dataset(examples=data['valid_data'], fields=fields)
-        ##test_data = Dataset(examples=data['test_data'], fields=fields) #token figure#
-
-        #train_iterator = torch.utils.data.DataLoader(train_data, batch_size=batch_size, drop_last=True)
-        #valid_iterator = torch.utils.data.DataLoader(val_data, batch_size=batch_size, drop_last=True)
-        train_iterator = BucketIterator(train_data, batch_size=batch_size, device=device, train=True)
-        valid_iterator = BucketIterator(val_data, batch_size=batch_size, device=device)
-        ##test_iterator = BucketIterator(test_data, batch_size=batch_size, device=device) #token figure#
-        ##train_iterator = test_iterator #token figure#
-        '''
-        import spacy
-        from torchtext.data import TabularDataset, Field
-        spacy_en = spacy.load('en_core_web_sm')  # en tokenization
-        def tokenize_en(text):
-            return [token.text for token in spacy_en.tokenizer(text)]
-        
-        SRC = Field(tokenize=tokenize_en, init_token="<sos>", eos_token="<eos>", pad_token="<blank>", lower=True, batch_first=True, fix_length=512, include_lengths=True)
-        TRG = Field(sequential=False, use_vocab=False, is_target=True, unk_token=None)
-        
-        train_data = TabularDataset(path= './hyperpartisan/train.csv', format="csv", fields=[('src', SRC), ('trg', TRG)], skip_header=True)
-        valid_data = TabularDataset(path='./hyperpartisan/val.csv', format="csv", fields=[('src', SRC), ('trg', TRG)], skip_header=True)
-        
-        SRC.build_vocab(train_data.src, min_freq=2) #!#
-        TRG.build_vocab(train_data.trg, min_freq=2) #!#
-        
-        INPUT_DIM = len(SRC.vocab)
-        OUTPUT_DIM = len(TRG.vocab)
-
-        train_iterator = BucketIterator(train_data, batch_size=batch_size, device=device, train=True)
-        valid_iterator = BucketIterator(valid_data, batch_size=batch_size, device=device)
-
-        SRC_PAD_IDX = SRC.vocab.stoi[SRC.pad_token]
-        #TRG_PAD_IDX = TRG.vocab.stoi[TRG.pad_token]
-        '''
-
-        #==================== CREATE MODEL ===================#
-        ## Transformer
-        if data_task == "MT":
-            model = Transformer(INPUT_DIM, OUTPUT_DIM, SRC_PAD_IDX, TRG_PAD_IDX, HIDDEN_DIM,
-                                ENC_LAYERS, DEC_LAYERS, ENC_HEADS, DEC_HEADS,
-                                ENC_PF_DIM, DEC_PF_DIM, ENC_DROPOUT, DEC_DROPOUT, device, attn_option).to(device)
-        elif data_task == "CF":
-            model = CF_Transformer(INPUT_DIM, OUTPUT_DIM, SRC_PAD_IDX, HIDDEN_DIM, ENC_LAYERS, ENC_HEADS, ENC_PF_DIM, ENC_DROPOUT, device, attn_option).to(device)
-        
-        LEARNING_RATE = 0.0001
-        ## optimizer(Adam)
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-        
-        
-        lr_scheduler = get_scheduler(
-                "linear",
-                optimizer=optimizer,
-                num_warmup_steps=num_warmup,
-                num_training_steps = N_EPOCHS * len(train_iterator)
-            ) 
-        
-        if data_task == "MT":
-            criterion = nn.CrossEntropyLoss(ignore_index = TRG_PAD_IDX)
-        elif data_task == 'CF':
-            criterion = nn.CrossEntropyLoss()
-
-        
-        #==================== START TRAIN ====================#
-        wandb.init(project="transformer", entity="jungminy")
-        #wandb.run.name = f"{saved_model}_{LEARNING_RATE}_{N_EPOCHS}_{batch_size}"
-        #print(wandb.run.name)
-        wandb.config = {
-            "learning_rate": learning_rate,
-            "epochs": n_epoch,
-            "batch_size": batch_size
-        }
-        
-        #optional
-        #wandb.watch(model)
-        
-        
-        start_train(model, train_iterator, valid_iterator, optimizer, device, N_EPOCHS, criterion)
-        
+            #print(f"recall_score: {Recall_score}")
+            #print(f"precision_score: {Precision_score}")
+        # from thop import profile
+        # flops, params = profile(model, inputs=(torch.randn(1,64).to(device).long(),), verbose=False)
+        # print(flops, params)
 ##################################################################################################################
 
 if __name__ == "__main__":
-    Train()
+    Test()

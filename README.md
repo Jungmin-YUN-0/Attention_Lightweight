@@ -47,14 +47,11 @@ Example command lines:
 ```Python
 python preprocess.py -data_task [MT / CF] -data_dir [wmt16 / imdb / yelp5 / sst2 / sst5] -data_ext csv -data_pkl [pickleName.pickle]
 ```
-Arguments are as follows:
+**Arguments are as follows:**
 
-* data_task:` ``MT``` is for machine translation(De→En) and ```CF``` is for classification (default: CF)
-
+* data_task: ```MT``` is for machine translation(De→En) and ```CF``` is for classification (default: CF)
 * data_dir: directory of dataset (default: yelp5)
-
 * data_ext: extension of dataset (default: csv)
-
 * data_pkl: file name of preprocessed data(pickle file)
 
 
@@ -70,12 +67,12 @@ python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_task [
 **Arguments are as follows:**
 
 * gpu: gpu number
-* option: ```BASE``` is for vanilla transformer, ```LR``` is for low-rank attention(linformer) and ```CT``` is for TopAttn (our proposed method) (default: CF)
+* option: ```BASE``` is for vanilla transformer, ```LR``` is for low-rank attention(linformer) and ```CT``` is for TopAttn (our proposed method) (default: CT)
 * task: ```TRAIN``` is for training, and ```TEST``` is for inference
 * data_task: ```MT``` is for machine translation and ```CF``` is for classification (default: CF)
 * data_pkl: file name of preprocessed data 
 * model_save: name of best model
-* pred_save: file name of prediction reesult
+* pred_save: file name of prediction reesult (This is for machine translation task)
 
 **Additional Arguments are as follows:**
 
@@ -89,6 +86,13 @@ python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_task [
 * ff_dim: dimension of feed-forward neural network (default: 2048)
 * dropout: ratio of dropout (default: 0.1)
 
+## Experiment
+### 1) Performance comparison of different token pruning ratios
+![image](https://user-images.githubusercontent.com/76892989/204666495-c428e6b8-9ac0-4719-aa6a-36b76d75a101.png)
+### 2) Training memory with different token pruning ratios
+![image](https://user-images.githubusercontent.com/76892989/204666620-6038b129-b49e-4398-8b75-9de8d6007062.png)
+### 3) Comparison with vanilla transformer on various datasets
+![image](https://user-images.githubusercontent.com/76892989/204667299-b44a97e5-9b8f-4031-a22e-7632523b641f.png)
 
 ## Contact
 cocoro357@cau.ac.kr

@@ -65,12 +65,13 @@ Arguments are as follows:
 Example command lines:
 
 ```Python
-python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] -data_task [MT / CF]
+python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_task [MT / CF] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] 
 ```
 **Arguments are as follows:**
 
 * gpu: gpu number
 * option: ```BASE``` is for vanilla transformer, ```LR``` is for low-rank attention(linformer) and ```CT``` is for TopAttn (our proposed method) (default: CF)
+* task: ```TRAIN``` is for training, and ```TEST``` is for inference
 * data_task: ```MT``` is for machine translation and ```CF``` is for classification (default: CF)
 * data_pkl: file name of preprocessed data 
 * model_save: name of best model

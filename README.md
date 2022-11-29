@@ -1,7 +1,7 @@
 # TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention
 
 
-Core-token Attention: Token Pruning-based Lightweight Self-Attention Mechanism
+"TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention" (ICEIC 2023)
 
 
 ![image](https://user-images.githubusercontent.com/76892989/204658198-23128ffc-96ce-4c68-8b0a-59aa53be4b5d.png)

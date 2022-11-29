@@ -3,7 +3,7 @@
 
  "TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention" (ICEIC 2023)
 
-### [Summary]
+## Summary
 
 Attention mechanism of transformer requires computational complexity that grows quadratically with input sequence length, which restricts its application to textremely long sequences. In this paper, we present TOken Pruned selfATTeNtion(TopAttn), which improves efficiency with low computation on attention operations and a loss of expressiveness. TopAttn introduces a token pruning method to the self-attention 
 gradually through transformer layers. 
@@ -13,8 +13,7 @@ gradually through transformer layers.
 
 
 
-
-### [Dependencies]
+## Dependencies
 
 This code is written in Python, Dependencies include 
 
@@ -24,16 +23,40 @@ This code is written in Python, Dependencies include
 * torchtext==0.4 (or 0.6)
 
 
+## Dataset
 
-**[실행]**
+We conduct experiments on binary classification dataset(IMDB and SST-2) and multi-class classification dataset(SST-5 and YELP-5)
 
-- DATA PREPROCESSING
 
+
+* IMDB (https://aclanthology.org/P11-1015.pdf)
+
+* SST-2 (https://aclanthology.org/D13-1170.pdf)
+
+* SST-5 (https://aclanthology.org/D13-1170.pdf)
+
+* YELP-5 (https://proceedings.neurips.cc/paper/2015/file/250cf8b51c773f3f8dc8b4be867a9a02-Paper.pdf)
+
+## Usage
+
+### [DATA PREPROCESSING]
+
+**preprocess.py** is for preprocessing step before training the model.
+
+Example command lines:
+
+```Python
 python preprocess.py -data_task [MT / CF] -data_dir [wmt16 / imdb / yelp5 / sst2 / sst5] -data_ext csv -data_pkl [pickleName.pickle]
+```
 
-(MT: machine translation, CF: classification)
+(NOTE: **MT** is for machine translation and **CF** is for classification task)
 
-- MAIN
+### [TRAINING]
+
+**main.py** is for preprocessing step before training the model.
+
+46
+Example command lines:
 
 python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] -data_task [MT / CF]
 

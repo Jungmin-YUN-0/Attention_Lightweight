@@ -91,16 +91,16 @@ python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_task [
 
 **1) Performance comparison of different token pruning ratios**
 
-![image](https://user-images.githubusercontent.com/76892989/204666495-c428e6b8-9ac0-4719-aa6a-36b76d75a101.png)
+![image](https://user-images.githubusercontent.com/76892989/204668073-651e0fae-ea0c-4c67-873a-2a91f943214a.png)
 
 **2) Training memory with different token pruning ratios**
 
-![image](https://user-images.githubusercontent.com/76892989/204666620-6038b129-b49e-4398-8b75-9de8d6007062.png)
+![image](https://user-images.githubusercontent.com/76892989/204668104-edf27299-b617-4ca6-bb9a-588c74e2e163.png)
+
 
 **3) Comparison with vanilla transformer on various datasets**
 
-![image](https://user-images.githubusercontent.com/76892989/204667299-b44a97e5-9b8f-4031-a22e-7632523b641f.png)
-
+![image](https://user-images.githubusercontent.com/76892989/204668118-d33b8dff-e939-422e-9c6e-88d00b6856d9.png)
 
 ## Contact
 cocoro357@cau.ac.kr

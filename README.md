@@ -51,17 +51,16 @@ python preprocess.py -data_task [MT / CF] -data_dir [wmt16 / imdb / yelp5 / sst2
 
 (NOTE: **MT** is for machine translation and **CF** is for classification task)
 
-### [TRAINING]
+### [MAIN]
 
-**main.py** is for preprocessing step before training the model.
+**main.py** is for model training and inference.
 
-46
 Example command lines:
 
+```Python
 python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] -data_task [MT / CF]
+```
 
 (BASE: vanilla transformer, LR: low-rank attention(linformer), CT: core-token attention(proposed model))
 
 [bleu score] De -> En
-
-vanilla transformer : 0.2998 linformer : 0.0408 ,,,

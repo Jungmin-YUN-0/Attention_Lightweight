@@ -49,7 +49,7 @@ python preprocess.py -data_task [MT / CF] -data_dir [wmt16 / imdb / yelp5 / sst2
 ```
 Arguments are as follows:
 
-* data_task: **MT** is for machine translation(De→En) and **CF** is for classification (default: CF)
+* data_task:` ``MT``` is for machine translation(De→En) and ```CF``` is for classification (default: CF)
 
 * data_dir: directory of dataset (default: yelp5)
 
@@ -67,16 +67,16 @@ Example command lines:
 ```Python
 python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] -data_task [MT / CF]
 ```
-Arguments are as follows:
+**Arguments are as follows:**
 
 * gpu: gpu number
-* option: **MT** is for machine translation and **CF** is for classification (default: CF)
-* data_task: **BASE** is for vanilla transformer, **LR** is for low-rank attention(linformer) and **CT** is for TopAttn (our proposed method) (default: CF)
+* option: ```BASE``` is for vanilla transformer, ```LR``` is for low-rank attention(linformer) and ```CT``` is for TopAttn (our proposed method) (default: CF)
+* data_task: ```MT``` is for machine translation and ```CF``` is for classification (default: CF)
 * data_pkl: file name of preprocessed data 
 * model_save: name of best model
 * pred_save: file name of prediction reesult
 
-Additional Arguments are as follows:
+**Additional Arguments are as follows:**
 
 * batch_size: batch size (default: 16)
 * num_dpoch : # of epoch (default: 8)
@@ -89,3 +89,5 @@ Additional Arguments are as follows:
 * dropout: ratio of dropout (default: 0.1)
 
 
+## Contact
+cocoro357@cau.ac.kr

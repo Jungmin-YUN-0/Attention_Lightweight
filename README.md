@@ -1,11 +1,12 @@
 # TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention
 
 
-"TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention" (ICEIC 2023)
+ "TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention" (ICEIC 2023)
 
+### [Summary]
 
 Attention mechanism of transformer requires computational complexity that grows quadratically with input sequence length, which restricts its application to textremely long sequences. In this paper, we present TOken Pruned selfATTeNtion(TopAttn), which improves efficiency with low computation on attention operations and a loss of expressiveness. TopAttn introduces a token pruning method to the self-attention 
-gradually through transformer layers.
+gradually through transformer layers. 
 
 
 ![image](https://user-images.githubusercontent.com/76892989/204658198-23128ffc-96ce-4c68-8b0a-59aa53be4b5d.png)
@@ -13,14 +14,18 @@ gradually through transformer layers.
 
 
 
-**[설치필요]**
+### [Dependencies]
 
-python -m spacy download en_core_web_sm
+This code is written in Python, Dependencies include 
 
-python -m spacy download de_core_news_sm
+* spacy
+(python -m spacy download en_core_web_sm, python -m spacy download de_core_news_sm)
 
-(torchtext==0.4)
-안되면 0.6
+* torchtext==0.4 (or 0.6)
+
+* torchtext==0.4 (or 0.6)
+
+* torchtext==0.4 (or 0.6
 
 
 **[실행]**

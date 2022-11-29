@@ -27,8 +27,6 @@ This code is written in Python, Dependencies include
 
 We conduct experiments on binary classification dataset(IMDB and SST-2) and multi-class classification dataset(SST-5 and YELP-5)
 
-
-
 * IMDB (https://aclanthology.org/P11-1015.pdf)
 
 * SST-2 (https://aclanthology.org/D13-1170.pdf)
@@ -36,6 +34,7 @@ We conduct experiments on binary classification dataset(IMDB and SST-2) and mult
 * SST-5 (https://aclanthology.org/D13-1170.pdf)
 
 * YELP-5 (https://proceedings.neurips.cc/paper/2015/file/250cf8b51c773f3f8dc8b4be867a9a02-Paper.pdf)
+
 
 ## Usage
 
@@ -48,8 +47,16 @@ Example command lines:
 ```Python
 python preprocess.py -data_task [MT / CF] -data_dir [wmt16 / imdb / yelp5 / sst2 / sst5] -data_ext csv -data_pkl [pickleName.pickle]
 ```
+Arguments are as follows:
 
-(NOTE: **MT** is for machine translation and **CF** is for classification task)
+* data_task: **MT** is for machine translation(De→En) and **CF** is for classification (default: CF)
+
+* data_dir: directory of dataset (default: yelp5)
+
+* data_ext: extension of dataset (default: csv)
+
+* data_pkl: file name of preprocessed data(pickle file)
+
 
 ### [MAIN]
 
@@ -60,7 +67,25 @@ Example command lines:
 ```Python
 python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_pkl [pickleName.pickle] -model_save [modelName.pt] -pred_save [predictionName.txt] -data_task [MT / CF]
 ```
+Arguments are as follows:
 
-(BASE: vanilla transformer, LR: low-rank attention(linformer), CT: core-token attention(proposed model))
+* gpu: gpu number
+* option: **MT** is for machine translation and **CF** is for classification (default: CF)
+* data_task: **BASE** is for vanilla transformer, **LR** is for low-rank attention(linformer) and **CT** is for TopAttn (our proposed method) (default: CF)
+* data_pkl: file name of preprocessed data 
+* model_save: name of best model
+* pred_save: file name of prediction reesult
 
-[bleu score] De -> En
+Additional Arguments are as follows:
+
+* batch_size: batch size (default: 16)
+* num_dpoch : # of epoch (default: 8)
+* learning_rate: learning rate (default: 1e-4)
+* num_warmup: # of steps for warmup (default: 4000)
+* hidden_dim: hidden dimension (default: 512)
+* n_layer: # of encoder and decoder layer (default: 6)
+* n_head: # of head(for multi-head attention) (default: 8)
+* ff_dim: dimension of feed-forward neural network (default: 2048)
+* dropout: ratio of dropout (default: 0.1)
+
+

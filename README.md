@@ -86,13 +86,21 @@ python main.py -gpu 1 -option [BASE / LR / CT] -task [TRAIN / TEST] -data_task [
 * ff_dim: dimension of feed-forward neural network (default: 2048)
 * dropout: ratio of dropout (default: 0.1)
 
+
 ## Experiment
+
 **1) Performance comparison of different token pruning ratios**
+
 ![image](https://user-images.githubusercontent.com/76892989/204666495-c428e6b8-9ac0-4719-aa6a-36b76d75a101.png)
+
 **2) Training memory with different token pruning ratios**
+
 ![image](https://user-images.githubusercontent.com/76892989/204666620-6038b129-b49e-4398-8b75-9de8d6007062.png)
+
 **3) Comparison with vanilla transformer on various datasets**
+
 ![image](https://user-images.githubusercontent.com/76892989/204667299-b44a97e5-9b8f-4031-a22e-7632523b641f.png)
+
 
 ## Contact
 cocoro357@cau.ac.kr

@@ -23,9 +23,6 @@ This code is written in Python, Dependencies include
 
 * torchtext==0.4 (or 0.6)
 
-* torchtext==0.4 (or 0.6)
-
-* torchtext==0.4 (or 0.6
 
 
 **[실행]**

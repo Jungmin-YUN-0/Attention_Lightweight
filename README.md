@@ -1,7 +1,3 @@
-# TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention
-
-
- "TopAttn: Focusing on Core Tokens With Token Pruned Self-Attention" (ICEIC 2023)
 
 ## Summary
 

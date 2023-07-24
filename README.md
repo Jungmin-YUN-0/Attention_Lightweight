@@ -1,13 +1,4 @@
 
-## Summary
-
-Attention mechanism of transformer requires computational complexity that grows quadratically with input sequence length, which restricts its application to textremely long sequences. In this paper, we present TOken Pruned selfATTeNtion(TopAttn), which improves efficiency with low computation on attention operations and a loss of expressiveness. TopAttn introduces a token pruning method to the self-attention 
-gradually through transformer layers. 
-
-
-![image](https://user-images.githubusercontent.com/76892989/204658198-23128ffc-96ce-4c68-8b0a-59aa53be4b5d.png)
-
-
 
 ## Dependencies
 
